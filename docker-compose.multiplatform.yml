@@ -1,0 +1,9 @@
+services:
+  prometheus-docker-container-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    image: mountainpass/prometheus-docker-container-exporter:latest

@@ -1,0 +1,21 @@
+# Compiled binary
+prometheus-docker-container-exporter
+docker-metrics-exporter
+
+# Git files
+.git
+.gitignore
+
+# Documentation
+README.md
+LICENSE
+
+# Development files
+.DS_Store
+*.log
+*.tmp
+
+# Go specific
+*.test
+*.prof
+coverage.out

@@ -1,0 +1,12 @@
+services:
+  prometheus-docker-container-exporter:
+    build: .
+    image: mountainpass/prometheus-docker-container-exporter:latest
+    container_name: prometheus-docker-container-exporter
+    environment:
+      - PORT=8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
