@@ -58,15 +58,9 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	// Docker API version metric
 	fmt.Fprintln(w, "# HELP docker_api_version Docker API version information")
 	fmt.Fprintln(w, "# TYPE docker_api_version gauge")
-	fmt.Fprintf(w, `docker_api_version %s`+"\n", version.APIVersion)
+	fmt.Fprintf(w, `docker_api_version{version="%s"} 1`+"\n", version.APIVersion)
 
 	// Generate Prometheus metrics
-	fmt.Fprintln(w, "# HELP docker_container_info Information about Docker containers")
-	fmt.Fprintln(w, "# TYPE docker_container_info gauge")
-	
-	fmt.Fprintln(w, "# HELP docker_container_state State of Docker containers (1=running, 0=stopped)")
-	fmt.Fprintln(w, "# TYPE docker_container_state gauge")
-
 	fmt.Fprintln(w, "# HELP docker_container_health Health status of Docker containers (1=healthy, 0=unhealthy, -1=no_healthcheck)")
 	fmt.Fprintln(w, "# TYPE docker_container_health gauge")
 
@@ -76,41 +70,25 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	for _, container := range containers {
 		// Get container name (remove leading slash)
 		name := strings.TrimPrefix(container.Names[0], "/")
-		
-		// Container info metric
-		fmt.Fprintf(w, `docker_container_info{id="%s",name="%s",image="%s"} "%s"`+"\n",
-			container.ID[:12], name, container.Image, container.Status)
-		
-		// Container state metric (1 for running, 0 for not running)
-		stateValue := 0
-		if container.State == "running" {
-			stateValue = 1
-		}
-		fmt.Fprintf(w, `docker_container_state{id="%s",name="%s",image="%s"} %d`+"\n",
-			container.ID[:12], name, container.Image, stateValue)
 
 		// Container health metric (1=healthy, 0=unhealthy, -1=no healthcheck)
-		healthValue := -1 // Default to no healthcheck
-		switch container.Status {
-		case "Up (healthy)":
-			healthValue = 1
-		case "Up (unhealthy)":
-			healthValue = 0
-		default:
-			// Check if status contains health information
-			if strings.Contains(container.Status, "(healthy)") {
-				healthValue = 1
-			} else if strings.Contains(container.Status, "(unhealthy)") {
-				healthValue = 0
-			}
+		healthValue := "-" // Default to no healthcheck
+		// Check if status contains health information
+		if strings.Contains(container.Status, "(healthy)") {
+			healthValue = "healthy"
+		} else if strings.Contains(container.Status, "(unhealthy)") {
+			healthValue = "unhealthy"
 		}
-		fmt.Fprintf(w, `docker_container_health{id="%s",name="%s",image="%s"} %d`+"\n",
-			container.ID[:12], name, container.Image, healthValue)
+
+		fmt.Fprintf(w, `docker_container_info{id="%s",name="%s",image="%s",status="%s",state="%s",health="%s"} 1`+"\n",
+		container.ID[:12], name, container.Image, container.Status, container.State, healthValue)
+		fmt.Fprintf(w, `docker_container_state{id="%s",name="%s",image="%s",state="%s",health="%s"} 1`+"\n",
+		container.ID[:12], name, container.Image, container.State, healthValue)
 
 		// Update counters for aggregate metrics
 		if container.State == "running" {
 			runningCount++
-			if healthValue == 0 {
+			if healthValue == "unhealthy" {
 				runningUnhealthyCount++
 			}
 		} else {
